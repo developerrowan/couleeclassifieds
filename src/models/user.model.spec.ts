@@ -21,10 +21,10 @@ describe('User model', () => {
     userId: 0,
     firstName: 'TEST',
     lastName: 'USER',
-    email: 'test@user.com',
+    email: 'test@testttt.com',
     password: 'asdc241254dsad$',
     role: 3,
-    active: 1,
+    active: true,
   }
 
   it(`should return users on call of findAllUsers`, done => {
@@ -122,7 +122,7 @@ describe('User model', () => {
     // Arrange / Act
     UserModel.updateUser(mockUserModel, (_, result) => {
       // Assert
-      expect(result).toBe(0)
+      expect(result).toBeFalsy()
       done()
     })
   })

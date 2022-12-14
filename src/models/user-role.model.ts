@@ -2,6 +2,7 @@ import { UserRoleDto } from './user-role.dto'
 import { QueryCallback } from '../types/types'
 import Database from '../db'
 import { OkPacket, RowDataPacket } from 'mysql2'
+import { isLengthGreaterThan, isNullOrEmpty } from '../helpers/validation'
 
 export default abstract class UserRoleModel {
   /**
@@ -110,6 +111,27 @@ export default abstract class UserRoleModel {
 
       callback(null, this.mapResult(<RowDataPacket[]>result))
     })
+  }
+
+  public static validate(
+    model: UserRoleDto,
+    callback: (err: string, valid: boolean) => void
+  ): void {
+    if (isLengthGreaterThan(model.name, 64)) {
+      callback('Role name must not exceed 64 characters', false)
+      return
+    } else if (isNullOrEmpty(model.name)) {
+      callback('Role name cannot be empty', false)
+      return
+    } else if (isLengthGreaterThan(model.description, 128)) {
+      callback('Role description must not exceed 64 characters', false)
+      return
+    } else if (isNullOrEmpty(model.description)) {
+      callback('Role description cannot be empty', false)
+      return
+    }
+
+    callback(null, true)
   }
 
   public static mapRow(row: RowDataPacket): UserRoleDto | undefined {

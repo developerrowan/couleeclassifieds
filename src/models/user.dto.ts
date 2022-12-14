@@ -5,5 +5,5 @@ export type UserDto = {
   email: string
   password: string
   role: number
-  active: number
+  active: boolean
 }

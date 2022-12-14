@@ -9,6 +9,7 @@ export default function authenticateJWT(
   next: NextFunction
 ) {
   const authHeader: string = req.headers['authorization']
+  const requiredRole: number = +req.headers['x-user-role-level'] || -1
   const token = authHeader && authHeader.split(' ')[1]
 
   if (!token) {
@@ -16,14 +17,31 @@ export default function authenticateJWT(
   }
 
   jwt.verify(token, process.env.JWT_SECRET as string, (err: any, user: any) => {
+    let verified: boolean = true
+
     if (err) {
-      return res.sendStatus(403)
+      verified = false
     }
+    /* Client sends a role of -1 to specify we don't care about the role */
+    if (requiredRole !== -1) {
+      UserModel.findUserByEmail(user.email, (error, result) => {
+        if (error || !result || result.role !== requiredRole) {
+          verified = false
+        }
 
-    /* @ts-ignore */
-    req.user = user
+        if (!verified) {
+          return res.sendStatus(403)
+        }
 
-    next()
+        next()
+      })
+    } else {
+      if (!verified) {
+        return res.sendStatus(403)
+      }
+
+      next()
+    }
   })
 }
 
@@ -41,7 +59,7 @@ export function validateUserDto(
     email: body.email,
     password: body.password,
     role: body.role,
-    active: 1,
+    active: false,
   }
 
   UserModel.validate(model, (err, valid) => {

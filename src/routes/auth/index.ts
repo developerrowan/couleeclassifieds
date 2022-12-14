@@ -1,8 +1,11 @@
 import { UserService } from './../../services/user.service'
 import express from 'express'
-import { validateUserDto } from '../../middleware/auth.middleware'
+import authenticateJWT, {
+  validateUserDto,
+} from '../../middleware/auth.middleware'
 import { UserDto } from '../../models/user.dto'
 import { LoginModel } from '../../types/types'
+import UserModel from '../../models/user.model'
 
 const router = express.Router()
 
@@ -21,10 +24,12 @@ router.post('/login', (req, res) => {
       return res.status(500).send(err)
     }
 
-    if (result) {
-      return res.status(200).json({ token: authToken })
-    }
+    return res.status(200).json({ token: authToken })
   })
+})
+
+router.get('/verify', authenticateJWT, (req, res) => {
+  return res.sendStatus(200)
 })
 
 router.post('/register', validateUserDto, (req, res) => {
@@ -37,7 +42,7 @@ router.post('/register', validateUserDto, (req, res) => {
     email: body.email,
     password: body.password,
     role: body.role,
-    active: 1,
+    active: false,
   }
 
   UserService.register(model, (err, result, authToken) => {

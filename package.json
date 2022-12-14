@@ -2,7 +2,7 @@
 	"main": "dist/index.js",
 	"scripts": {
 		"start": "tsc && node .",
-		"test": "pnpm exec jest --silent=false --forceExit",
+		"test": "pnpm exec jest --silent=false --forceExit --coverage",
 		"format": "pnpm exec prettier --write src/**/*.ts"
 	},
 	"dependencies": {

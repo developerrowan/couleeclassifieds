@@ -9,6 +9,10 @@ export function isNullOrEmpty(object: any): boolean {
   )
 }
 
+export function isNonZero(number: number): boolean {
+  return number !== null && number > 0
+}
+
 /**
  * Checks if string's length is greater than a number
  * @param object String to check

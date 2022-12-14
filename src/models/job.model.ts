@@ -2,6 +2,11 @@ import { QueryCallback } from '../types/types'
 import { JobDto } from './job.dto'
 import Database from '../db'
 import { OkPacket, RowDataPacket } from 'mysql2'
+import {
+  isNullOrEmpty,
+  isNonZero,
+  isLengthGreaterThan,
+} from '../helpers/validation'
 
 export default abstract class JobModel {
   /**
@@ -140,8 +145,10 @@ export default abstract class JobModel {
    * @param callback Callback
    * @returns (via callback) Array of JobDtos
    */
-  public static findAllJobs(callback: QueryCallback): void {
-    const query = `SELECT * FROM Jobs`
+  public static findAllJobs(callback: QueryCallback, limit?: number): void {
+    const query = `SELECT * FROM Jobs ORDER BY JobPostedDate DESC${
+      limit ? ` LIMIT ${limit} ` : ''
+    }`
 
     Database.query(query, (err, result) => {
       if (err) {
@@ -178,5 +185,24 @@ export default abstract class JobModel {
     })
 
     return jobs
+  }
+
+  public static validate(
+    model: JobDto,
+    callback: (err: string, valid: boolean) => void
+  ): void {
+    if (!isNonZero(model.jobPostedByUser)) {
+      callback('User who posted job cannot be empty', false)
+      return
+    } else if (!isNonZero(model.jobPayRangeMin)) {
+      callback('Job Minimum Pay cannot be zero or empty', false)
+      return
+    } else if (isNullOrEmpty(model.jobCity)) {
+      callback('Job city cannot be empty', false)
+      return
+    } else if (isLengthGreaterThan(model.jobCity, 64)) {
+      callback('Job city must not exceed 64 characters', false)
+      return
+    }
   }
 }

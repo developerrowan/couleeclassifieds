@@ -5,8 +5,10 @@ import { OkPacket, RowDataPacket } from 'mysql2'
 import {
   isLengthGreaterThan,
   isLengthLessThan,
+  isNonZero,
   isNullOrEmpty,
 } from '../helpers/validation'
+import bcrypt from 'bcrypt'
 
 /**
  * Within this stack, the model acts as both the data access and model classes.
@@ -19,7 +21,15 @@ export default abstract class UserModel {
    * @param callback Callback
    * @returns (via callback) Insertion ID
    */
-  public static insertUser(model: UserDto, callback: QueryCallback): void {
+  public static async insertUser(
+    model: UserDto,
+    callback: QueryCallback
+  ): Promise<void> {
+    // no salt necessary - bcrypt will automatically store a salt in the hash for us
+    const encryptedPassword: string = await bcrypt.hash(model.password, 10)
+
+    model.password = encryptedPassword
+
     const query = `INSERT INTO Users
                             (UserFirstName,
                             UserLastName,
@@ -47,25 +57,56 @@ export default abstract class UserModel {
    * @param callback Callback
    * @returns (via callback) Affected row count
    */
-  public static updateUser(model: UserDto, callback: QueryCallback): void {
-    const query = `UPDATE Users
+  public static async updateUser(
+    model: UserDto,
+    callback: QueryCallback
+  ): Promise<void> {
+    const newHash: string = await bcrypt.hash(model.password, 10)
+    let shouldUpdatePassword: boolean = false
+
+    await UserModel.findUserById(model.userId, async (err, result) => {
+      if (err || !result) {
+        callback(err)
+        return
+      }
+
+      const passwordMatches: boolean = await bcrypt.compare(
+        model.password,
+        result.password
+      )
+
+      if (!passwordMatches && !(model.password === result.password)) {
+        shouldUpdatePassword = true
+      }
+
+      /* Client did not provide a role (an expected behaviour at times) */
+      if (model.role === 99) {
+        model.role = result.role
+      }
+
+      const query = `UPDATE Users
                          SET UserFirstName = ${Database.escape(
                            model.firstName
                          )},
                              UserLastName =  ${Database.escape(model.lastName)},
                              UserEmail = ${Database.escape(model.email)},
-                             UserPassword = ${Database.escape(model.password)},
+                             ${
+                               shouldUpdatePassword
+                                 ? `UserPassword = ${Database.escape(newHash)},`
+                                 : ''
+                             }
                              UserRole = ${model.role},
-                             UserActive = ${model.active}
+                             UserActive = ${model.active ? '1' : '0'}
                          WHERE UserId = ${model.userId}`
 
-    Database.query(query, (err, result) => {
-      if (err) {
-        callback(err)
-        return
-      }
+      Database.query(query, (err, result) => {
+        if (err) {
+          callback(err)
+          return
+        }
 
-      callback(null, (<OkPacket>result).affectedRows)
+        callback(null, (<OkPacket>result).affectedRows)
+      })
     })
   }
 
@@ -177,7 +218,7 @@ export default abstract class UserModel {
     } else if (isNullOrEmpty(model.password)) {
       callback('Password cannot be empty', false)
       return
-    } else if (isNullOrEmpty(model.role)) {
+    } else if (!isNonZero(model.role)) {
       callback('User must have a role', false)
       return
     }
@@ -194,7 +235,7 @@ export default abstract class UserModel {
           email: row.UserEmail,
           password: row.UserPassword,
           role: row.UserRole,
-          active: row.UserActive,
+          active: Boolean(Buffer.from(row.UserActive).readInt8()),
         }
       : undefined
   }

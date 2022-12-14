@@ -27,6 +27,15 @@ export class UserService {
         return
       }
 
+      if (!result.active) {
+        callback(
+          'Your account has been disabled. Please contact an administrator if you believe this to be an error.',
+          false,
+          null
+        )
+        return
+      }
+
       callback(null, true, this.generateJWT(model.email, model.rememberMe))
     })
   }
@@ -40,11 +49,6 @@ export class UserService {
         callback(err, false, null)
         return
       }
-
-      // no salt necessary - bcrypt will automatically store a salt in the hash for us
-      const encryptedPassword: string = await bcrypt.hash(model.password, 10)
-
-      model.password = encryptedPassword
 
       UserModel.insertUser(model, (err, _) => {
         if (err) {
